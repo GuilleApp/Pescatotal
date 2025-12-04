@@ -1,5 +1,10 @@
 // screens/Profile.tsx
-import React, { useState } from "react";
+import React, {
+  useEffect,
+  useState,
+  useCallback,
+  useMemo,
+} from "react";
 import {
   View,
   Text,
@@ -7,404 +12,494 @@ import {
   ScrollView,
   Image,
   TouchableOpacity,
-  Alert,
+  ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import { supabase } from "../lib/supabase"; // 🔁 ajusta si es necesario
 
-type Capture = {
+// mismos datos de demo que usamos en NewCatch / PostDetail / Feed
+const CURRENT_USER_ID = "demo-user-1";
+const CURRENT_USER_NAME = "Pescador Demo";
+
+interface Post {
+  id: string;
+  image_url: string;
+  caption: string | null;
+  created_at: string;
+  likes_count: number;
+  comments_count: number;
+}
+
+interface Achievement {
   id: string;
   title: string;
-  image: string;
-};
+  description: string;
+  icon: string;
+  unlocked: boolean;
+}
 
-const mockCaptures: Capture[] = [
-  {
-    id: "1",
-    title: "Trucha en el río",
-    image: "https://picsum.photos/seed/capture1/600/800",
-  },
-  {
-    id: "2",
-    title: "Lubina al amanecer",
-    image: "https://picsum.photos/seed/capture2/600/800",
-  },
-  {
-    id: "3",
-    title: "Captura de lucio",
-    image: "https://picsum.photos/seed/capture3/600/800",
-  },
-  {
-    id: "4",
-    title: "Carpa junto al lago",
-    image: "https://picsum.photos/seed/capture4/600/800",
-  },
-  {
-    id: "5",
-    title: "Pesca de salmón",
-    image: "https://picsum.photos/seed/capture5/600/800",
-  },
-  {
-    id: "6",
-    title: "Perca en día soleado",
-    image: "https://picsum.photos/seed/capture6/600/800",
-  },
-];
+const ProfileScreen: React.FC = () => {
+  const navigation = useNavigation<any>();
 
-type TabKey = "captures" | "guides" | "stats";
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
 
-export default function ProfileScreen() {
-  const [activeTab, setActiveTab] = useState<TabKey>("captures");
+  const loadMyPosts = useCallback(async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from("posts")
+        .select(
+          "id, image_url, caption, created_at, likes_count, comments_count, user_name"
+        )
+        .eq("user_name", CURRENT_USER_NAME)
+        .order("created_at", { ascending: false });
 
-  const handleEditProfile = () => {
-    Alert.alert(
-      "Editar perfil",
-      "En una próxima versión vas a poder editar tu nombre, foto y descripción desde aquí."
-    );
-  };
-
-  const handleSettings = () => {
-    Alert.alert(
-      "Configuración",
-      "Pantalla de configuración pendiente de implementar."
-    );
-  };
-
-  const handleCapturePress = (capture: Capture) => {
-    Alert.alert("Captura", `Abrir detalle de: "${capture.title}"`);
-  };
-
-  const renderTabContent = () => {
-    if (activeTab === "captures") {
-      return (
-        <View style={styles.grid}>
-          {mockCaptures.map((cap) => (
-            <TouchableOpacity
-              key={cap.id}
-              style={styles.captureCard}
-              onPress={() => handleCapturePress(cap)}
-            >
-              <Image
-                source={{ uri: cap.image }}
-                style={styles.captureImage}
-                resizeMode="cover"
-              />
-              <View style={styles.captureOverlay} />
-              <Text style={styles.captureTitle} numberOfLines={2}>
-                {cap.title}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      );
+      if (error) {
+        console.error("Error al cargar posts del perfil:", error.message);
+        setPosts([]);
+      } else if (data) {
+        setPosts(
+          data.map((p: any) => ({
+            id: p.id,
+            image_url: p.image_url,
+            caption: p.caption,
+            created_at: p.created_at,
+            likes_count: p.likes_count,
+            comments_count: p.comments_count,
+          }))
+        );
+      }
+    } catch (err) {
+      console.error("Error inesperado en loadMyPosts:", err);
+    } finally {
+      setLoading(false);
     }
+  }, []);
 
-    if (activeTab === "guides") {
-      return (
-        <View style={styles.placeholderBox}>
-          <Ionicons name="book-outline" size={32} color="#00C2FF" />
-          <Text style={styles.placeholderTitle}>Mis guías</Text>
-          <Text style={styles.placeholderText}>
-            En el futuro vas a ver acá las guías que publicaste o seguiste.
-          </Text>
-        </View>
-      );
-    }
+  useEffect(() => {
+    loadMyPosts();
+  }, [loadMyPosts]);
 
-    // stats
-    return (
-      <View style={styles.placeholderBox}>
-        <Ionicons name="stats-chart-outline" size={32} color="#00C2FF" />
-        <Text style={styles.placeholderTitle}>Estadísticas</Text>
-        <Text style={styles.placeholderText}>
-          Próximamente: horas pescadas, especies capturadas, mejores pesqueros y
-          rachas.
-        </Text>
-      </View>
-    );
+  useFocusEffect(
+    useCallback(() => {
+      loadMyPosts();
+    }, [loadMyPosts])
+  );
+
+  const totalCatches = posts.length;
+  const totalLikes = posts.reduce((sum, p) => sum + p.likes_count, 0);
+
+  const goToNewCatch = () => {
+    navigation.navigate("NewCatch");
   };
+
+  const openPost = (post: Post) => {
+    navigation.navigate("PostDetail", {
+      post: {
+        id: post.id,
+        user_name: CURRENT_USER_NAME,
+        user_avatar: null,
+        location: null,
+        image_url: post.image_url,
+        caption: post.caption,
+        hashtags: "#pesca #capturaysuelta",
+        likes_count: post.likes_count,
+        comments_count: post.comments_count,
+        created_at: post.created_at,
+      },
+    });
+  };
+
+  // 💡 Sistema simple de logros calculado en base a capturas y likes
+  const achievements: Achievement[] = useMemo(() => {
+    return [
+      {
+        id: "rookie",
+        title: "Primer Lanzamiento",
+        description: "Registra tu primera captura.",
+        icon: "🌱",
+        unlocked: totalCatches >= 1,
+      },
+      {
+        id: "active",
+        title: "Pescador Activo",
+        description: "Alcanza 5 capturas registradas.",
+        icon: "🎣",
+        unlocked: totalCatches >= 5,
+      },
+      {
+        id: "pro",
+        title: "Cazador de Trofeos",
+        description: "Alcanza 15 capturas registradas.",
+        icon: "🏆",
+        unlocked: totalCatches >= 15,
+      },
+      {
+        id: "popular",
+        title: "Popular del Muelle",
+        description: "Llega a 50 Me gusta en total.",
+        icon: "🔥",
+        unlocked: totalLikes >= 50,
+      },
+      {
+        id: "legend",
+        title: "Leyenda del Río",
+        description: "Llega a 150 Me gusta en total.",
+        icon: "👑",
+        unlocked: totalLikes >= 150,
+      },
+    ];
+  }, [totalCatches, totalLikes]);
+
+  const unlockedCount = achievements.filter((a) => a.unlocked).length;
 
   return (
-    <View style={styles.container}>
-      {/* HEADER SUPERIOR */}
-      <View style={styles.topBar}>
-        <Text style={styles.topBarTitle}>Perfil</Text>
-        <TouchableOpacity onPress={handleSettings}>
-          <Ionicons name="settings-outline" size={22} color="#ffffff" />
-        </TouchableOpacity>
-      </View>
-
+    <View style={styles.screen}>
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={{ paddingBottom: 80 }}
+        contentContainerStyle={{ paddingBottom: 32 }}
       >
-        {/* AVATAR + NOMBRE */}
+        {/* Header Usuario */}
         <View style={styles.header}>
           <View style={styles.avatarWrapper}>
-            <Image
-              source={{
-                uri: "https://picsum.photos/seed/urupesca-avatar/400/400",
-              }}
-              style={styles.avatarImage}
-            />
+            <Text style={styles.avatarInitial}>
+              {CURRENT_USER_NAME.charAt(0).toUpperCase()}
+            </Text>
           </View>
-
-          <Text style={styles.name}>Alex Roldán</Text>
-          <Text style={styles.subtitle}>
-            Pescador aficionado | Montevideo, Uruguay
-          </Text>
-
-          <TouchableOpacity
-            style={styles.editButton}
-            onPress={handleEditProfile}
-          >
-            <Text style={styles.editButtonText}>Editar Perfil</Text>
+          <View style={{ flex: 1, marginLeft: 12 }}>
+            <Text style={styles.userName}>{CURRENT_USER_NAME}</Text>
+            <Text style={styles.userSubtitle}>Pescador aficionado</Text>
+          </View>
+          <TouchableOpacity style={styles.editButton} activeOpacity={0.8}>
+            <Ionicons name="settings-outline" size={18} color="#111827" />
           </TouchableOpacity>
         </View>
 
-        {/* ESTADÍSTICAS RESUMEN */}
+        {/* Stats */}
         <View style={styles.statsRow}>
-          <View style={styles.statCard}>
-            <Text style={styles.statValue}>25</Text>
-            <Text style={styles.statLabel}>Capturas</Text>
+          <View style={styles.statsItem}>
+            <Text style={styles.statsNumber}>{totalCatches}</Text>
+            <Text style={styles.statsLabel}>Capturas</Text>
           </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statValue}>12</Text>
-            <Text style={styles.statLabel}>Especies</Text>
+          <View style={styles.statsItem}>
+            <Text style={styles.statsNumber}>{totalLikes}</Text>
+            <Text style={styles.statsLabel}>Me gusta</Text>
           </View>
-          <View style={[styles.statCard, { flexBasis: "100%" }]}>
-            <Text style={styles.statValue}>5</Text>
-            <Text style={styles.statLabel}>Sitios</Text>
+          <View style={styles.statsItem}>
+            <Text style={styles.statsNumber}>
+              {unlockedCount}/{achievements.length}
+            </Text>
+            <Text style={styles.statsLabel}>Logros</Text>
           </View>
         </View>
 
-        {/* TABS */}
-        <View style={styles.tabsContainer}>
-          <TabButton
-            icon="image-outline"
-            label="Mis Capturas"
-            active={activeTab === "captures"}
-            onPress={() => setActiveTab("captures")}
+        {/* Botón crear captura */}
+        <TouchableOpacity
+          style={styles.newCatchButton}
+          onPress={goToNewCatch}
+          activeOpacity={0.9}
+        >
+          <Ionicons
+            name="add-circle-outline"
+            size={20}
+            color="#ffffff"
+            style={{ marginRight: 6 }}
           />
-          <TabButton
-            icon="document-text-outline"
-            label="Mis Guías"
-            active={activeTab === "guides"}
-            onPress={() => setActiveTab("guides")}
-          />
-          <TabButton
-            icon="stats-chart-outline"
-            label="Estadísticas"
-            active={activeTab === "stats"}
-            onPress={() => setActiveTab("stats")}
-          />
+          <Text style={styles.newCatchButtonText}>Registrar nueva captura</Text>
+        </TouchableOpacity>
+
+        {/* Bloque de logros */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Tus logros</Text>
         </View>
 
-        {/* CONTENIDO DE CADA TAB */}
-        {renderTabContent()}
+        <View style={styles.achievementsCard}>
+          {achievements.map((ach) => (
+            <View key={ach.id} style={styles.achievementRow}>
+              <View
+                style={[
+                  styles.achievementIconWrapper,
+                  ach.unlocked
+                    ? styles.achievementIconUnlocked
+                    : styles.achievementIconLocked,
+                ]}
+              >
+                <Text style={styles.achievementIconText}>{ach.icon}</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text
+                  style={[
+                    styles.achievementTitle,
+                    !ach.unlocked && styles.achievementTitleLocked,
+                  ]}
+                >
+                  {ach.title}
+                </Text>
+                <Text
+                  style={[
+                    styles.achievementDescription,
+                    !ach.unlocked && styles.achievementDescriptionLocked,
+                  ]}
+                >
+                  {ach.description}
+                </Text>
+              </View>
+              <Ionicons
+                name={ach.unlocked ? "checkmark-circle" : "lock-closed"}
+                size={20}
+                color={ach.unlocked ? "#22c55e" : "#9ca3af"}
+              />
+            </View>
+          ))}
+        </View>
+
+        {/* Título sección capturas */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Tus capturas</Text>
+        </View>
+
+        {/* Loading / vacío / grid */}
+        {loading && (
+          <View style={{ marginTop: 16, alignItems: "center" }}>
+            <ActivityIndicator />
+            <Text style={{ marginTop: 6, color: "#6b7280" }}>
+              Cargando tus capturas...
+            </Text>
+          </View>
+        )}
+
+        {!loading && posts.length === 0 && (
+          <View style={{ marginTop: 16, alignItems: "center" }}>
+            <Text style={{ color: "#6b7280", textAlign: "center" }}>
+              Todavía no registraste ninguna captura.
+              {"\n"}Usa el botón de arriba para crear la primera 🎣
+            </Text>
+          </View>
+        )}
+
+        {!loading && posts.length > 0 && (
+          <View style={styles.grid}>
+            {posts.map((post) => (
+              <TouchableOpacity
+                key={post.id}
+                style={styles.gridItem}
+                onPress={() => openPost(post)}
+                activeOpacity={0.9}
+              >
+                <Image
+                  source={{ uri: post.image_url }}
+                  style={styles.gridImage}
+                />
+                <View style={styles.gridOverlay}>
+                  <View style={styles.gridOverlayRow}>
+                    <Ionicons
+                      name="flame-outline"
+                      size={14}
+                      color="#ffffff"
+                    />
+                    <Text style={styles.gridOverlayText}>
+                      {post.likes_count}
+                    </Text>
+                  </View>
+                  <View style={styles.gridOverlayRow}>
+                    <Ionicons
+                      name="chatbubble-outline"
+                      size={14}
+                      color="#ffffff"
+                    />
+                    <Text style={styles.gridOverlayText}>
+                      {post.comments_count}
+                    </Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
       </ScrollView>
     </View>
   );
-}
-
-type TabButtonProps = {
-  icon: keyof typeof Ionicons.glyphMap;
-  label: string;
-  active: boolean;
-  onPress: () => void;
 };
 
-function TabButton({ icon, label, active, onPress }: TabButtonProps) {
-  return (
-    <TouchableOpacity
-      style={[styles.tabButton, active && styles.tabButtonActive]}
-      onPress={onPress}
-    >
-      <Ionicons
-        name={icon}
-        size={18}
-        color={active ? "#00C2FF" : "#9FB3C3"}
-      />
-      <Text style={[styles.tabLabel, active && styles.tabLabelActive]}>
-        {label}
-      </Text>
-    </TouchableOpacity>
-  );
-}
+export default ProfileScreen;
 
 const styles = StyleSheet.create({
-  container: {
+  screen: {
     flex: 1,
-    backgroundColor: "#020B10",
-  },
-  topBar: {
-    paddingTop: 14,
-    paddingBottom: 8,
-    paddingHorizontal: 16,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    backgroundColor: "#02151F",
-    borderBottomWidth: 1,
-    borderBottomColor: "#071823",
-  },
-  topBarTitle: {
-    color: "#FFFFFF",
-    fontSize: 18,
-    fontWeight: "600",
+    backgroundColor: "#f5f5f7",
   },
   scroll: {
     flex: 1,
-  },
-  header: {
-    alignItems: "center",
     paddingHorizontal: 16,
-    paddingTop: 20,
-    paddingBottom: 16,
+    paddingTop: 16,
+  },
+
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 16,
   },
   avatarWrapper: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    borderWidth: 3,
-    borderColor: "#00C2FF",
-    padding: 4,
-    marginBottom: 12,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: "#0ea5e9",
+    justifyContent: "center",
+    alignItems: "center",
   },
-  avatarImage: {
-    width: "100%",
-    height: "100%",
-    borderRadius: 60,
-  },
-  name: {
-    color: "#FFFFFF",
-    fontSize: 22,
+  avatarInitial: {
+    color: "#ffffff",
+    fontSize: 24,
     fontWeight: "700",
-    marginBottom: 4,
-    textAlign: "center",
   },
-  subtitle: {
-    color: "#9FB3C3",
+  userName: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#111827",
+  },
+  userSubtitle: {
     fontSize: 13,
-    textAlign: "center",
-    marginBottom: 14,
+    color: "#6b7280",
+    marginTop: 2,
   },
   editButton: {
-    backgroundColor: "#00C2FF",
-    borderRadius: 999,
-    paddingHorizontal: 24,
-    paddingVertical: 10,
-    marginTop: 4,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "#e5e7eb",
+    justifyContent: "center",
+    alignItems: "center",
   },
-  editButtonText: {
-    color: "#00141C",
+
+  statsRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 14,
+  },
+  statsItem: {
+    flex: 1,
+    alignItems: "center",
+  },
+  statsNumber: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#111827",
+  },
+  statsLabel: {
+    fontSize: 12,
+    color: "#6b7280",
+    marginTop: 2,
+  },
+
+  newCatchButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#2563eb",
+    borderRadius: 999,
+    paddingVertical: 10,
+    marginBottom: 18,
+  },
+  newCatchButtonText: {
+    color: "#ffffff",
     fontSize: 14,
     fontWeight: "600",
   },
 
-  statsRow: {
-    paddingHorizontal: 16,
-    marginTop: 8,
-    gap: 10,
-    flexWrap: "wrap",
-    flexDirection: "row",
-  },
-  statCard: {
-    flexBasis: "48%",
-    backgroundColor: "#031D29",
-    borderRadius: 16,
-    paddingVertical: 14,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  statValue: {
-    color: "#FFFFFF",
-    fontSize: 20,
-    fontWeight: "700",
-  },
-  statLabel: {
-    color: "#9FB3C3",
-    fontSize: 13,
-    marginTop: 2,
-  },
-
-  tabsContainer: {
+  sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingHorizontal: 16,
-    marginTop: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: "#071823",
-  },
-  tabButton: {
-    flex: 1,
     alignItems: "center",
-    paddingVertical: 10,
+    marginBottom: 8,
   },
-  tabButtonActive: {
-    borderBottomWidth: 2,
-    borderBottomColor: "#00C2FF",
-  },
-  tabLabel: {
-    marginTop: 2,
-    fontSize: 12,
-    color: "#9FB3C3",
-  },
-  tabLabelActive: {
-    color: "#00C2FF",
-    fontWeight: "600",
-  },
-
-  grid: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-    rowGap: 12,
-  },
-  captureCard: {
-    width: "48%",
-    borderRadius: 16,
-    overflow: "hidden",
-    backgroundColor: "#031D29",
-  },
-  captureImage: {
-    width: "100%",
-    height: 140,
-  },
-  captureOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.25)",
-  },
-  captureTitle: {
-    position: "absolute",
-    left: 10,
-    bottom: 8,
-    right: 10,
-    color: "#FFFFFF",
-    fontSize: 13,
-    fontWeight: "600",
-  },
-
-  placeholderBox: {
-    marginTop: 24,
-    marginHorizontal: 16,
-    padding: 16,
-    borderRadius: 16,
-    backgroundColor: "#031D29",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  placeholderTitle: {
-    color: "#FFFFFF",
+  sectionTitle: {
     fontSize: 16,
-    fontWeight: "600",
-    marginTop: 8,
-    marginBottom: 6,
+    fontWeight: "700",
+    color: "#111827",
   },
-  placeholderText: {
-    color: "#9FB3C3",
-    fontSize: 13,
-    textAlign: "center",
+
+  // Card de logros
+  achievementsCard: {
+    backgroundColor: "#ffffff",
+    borderRadius: 18,
+    padding: 12,
+    marginBottom: 18,
+  },
+  achievementRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  achievementIconWrapper: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 10,
+  },
+  achievementIconUnlocked: {
+    backgroundColor: "#dcfce7",
+  },
+  achievementIconLocked: {
+    backgroundColor: "#e5e7eb",
+  },
+  achievementIconText: {
+    fontSize: 18,
+  },
+  achievementTitle: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#111827",
+  },
+  achievementTitleLocked: {
+    color: "#6b7280",
+  },
+  achievementDescription: {
+    fontSize: 12,
+    color: "#4b5563",
+  },
+  achievementDescriptionLocked: {
+    color: "#9ca3af",
+  },
+
+  // Grid de capturas
+  grid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    marginHorizontal: -4,
+  },
+  gridItem: {
+    width: "33.3333%",
+    aspectRatio: 1,
+    padding: 4,
+  },
+  gridImage: {
+    flex: 1,
+    borderRadius: 8,
+  },
+  gridOverlay: {
+    position: "absolute",
+    bottom: 8,
+    left: 8,
+    right: 8,
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  gridOverlayRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.55)",
+    borderRadius: 999,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  gridOverlayText: {
+    color: "#ffffff",
+    fontSize: 11,
+    marginLeft: 2,
   },
 });

@@ -8,15 +8,14 @@ import {
   Image,
   TouchableOpacity,
 } from "react-native";
-import { useNavigation } from "@react-navigation/native";
 import type { Guide } from "../hooks/useGuides";
 
 interface GuideDetailProps {
   route: { params: { guide: Guide } };
+  navigation: any;
 }
 
-const GuideDetail: React.FC<GuideDetailProps> = ({ route }) => {
-  const navigation = useNavigation<any>();
+const GuideDetail: React.FC<any> = ({ route, navigation }) => {
   const { guide } = route.params;
 
   const {
@@ -59,8 +58,8 @@ const GuideDetail: React.FC<GuideDetailProps> = ({ route }) => {
       params: {
         initialSection: "baits",
         fromGuideBait: baitName ?? null,
-      },
-    });
+      } as any,
+    } as any);
   };
 
   // Navegar a Guías -> Equipamiento
@@ -70,8 +69,8 @@ const GuideDetail: React.FC<GuideDetailProps> = ({ route }) => {
       params: {
         initialSection: "gear",
         fromGuideEquipment: equipName ?? null,
-      },
-    });
+      } as any,
+    } as any);
   };
 
   return (
@@ -158,7 +157,7 @@ const GuideDetail: React.FC<GuideDetailProps> = ({ route }) => {
       {equipment && equipment.length > 0 && (
         <View style={styles.sectionCard}>
           <Text style={styles.sectionTitle}>Equipamiento recomendado</Text>
-          {equipment.map((eq) => (
+          {equipment.map((eq: string) => (
             <TouchableOpacity
               key={eq}
               style={styles.itemButton}
@@ -175,7 +174,7 @@ const GuideDetail: React.FC<GuideDetailProps> = ({ route }) => {
       {baits && baits.length > 0 && (
         <View style={styles.sectionCard}>
           <Text style={styles.sectionTitle}>Carnadas recomendadas</Text>
-          {baits.map((b) => (
+          {baits.map((b: string) => (
             <TouchableOpacity
               key={b}
               style={styles.itemButton}
@@ -192,7 +191,7 @@ const GuideDetail: React.FC<GuideDetailProps> = ({ route }) => {
       {lures && lures.length > 0 && (
         <View style={styles.sectionCard}>
           <Text style={styles.sectionTitle}>Señuelos recomendados</Text>
-          {lures.map((l) => (
+          {lures.map((l: string) => (
             <View key={l} style={styles.itemButtonDisabled}>
               <View style={styles.itemDot} />
               <Text style={styles.itemText}>{l}</Text>
@@ -205,7 +204,7 @@ const GuideDetail: React.FC<GuideDetailProps> = ({ route }) => {
       {species && species.length > 0 && (
         <View style={styles.sectionCard}>
           <Text style={styles.sectionTitle}>Especies objetivo</Text>
-          {species.map((s) => (
+          {species.map((s: string) => (
             <View key={s} style={styles.itemButtonDisabled}>
               <View style={styles.itemDot} />
               <Text style={styles.itemText}>{s}</Text>
@@ -225,7 +224,7 @@ export default GuideDetail;
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: "#f3f4f6", // gris clarito
+    backgroundColor: "#f3f4f6",
   },
 
   // CARD PRINCIPAL
@@ -385,7 +384,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
 
-  // ÍTEMS DE LISTA COMO BOTONES
+  // ÍTEMS DE LISTA
   itemButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -408,4 +407,3 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
 });
-
