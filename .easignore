@@ -1,0 +1,7 @@
+# Ignorar cache de Expo
+.expo
+
+# Otros que no queremos subir
+node_modules
+dist
+web-build

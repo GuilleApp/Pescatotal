@@ -86,8 +86,8 @@ const GuidesScreen = () => {
               section === "guides" && styles.sectionTabTextActive,
             ]}
           >
-            Guías
-          </Text>
+            Lugares recomendados
+                      </Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -129,7 +129,7 @@ const GuidesScreen = () => {
       <View style={{ flex: 1 }}>
         {section === "guides" && (
           <>
-            <Text style={styles.title}>Zonas Recomendadas</Text>
+            <Text style={styles.title}>Recomendados por la comunidad</Text>
 
             {/* FILTRO POR ESTILO */}
             <ScrollView
@@ -159,7 +159,7 @@ const GuidesScreen = () => {
             </ScrollView>
 
             {/* FILTRO POR ENTORNO */}
-            <Text style={styles.subtitle}>Entorno</Text>
+            <Text style={styles.subtitle}></Text>
 
             <ScrollView
               horizontal

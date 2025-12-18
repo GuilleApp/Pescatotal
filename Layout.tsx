@@ -12,6 +12,7 @@ import MapScreen from "./screens/Map";
 import GuidesScreen from "./screens/Guides";
 import ProfileScreen from "./screens/Profile";
 import GuideDetail from "./screens/GuideDetail";
+import WeatherScreen from "./screens/Weather";
 import NewCatchScreen from "./screens/NewCatch";
 import PostDetail from "./screens/PostDetail";
 
@@ -44,8 +45,21 @@ function MainTabs() {
         },
       })}
     >
+    
       <Tab.Screen name="Inicio" component={FeedScreen} />
       <Tab.Screen name="Mapa" component={MapScreen} />
+      <Tab.Screen
+  name="Weather"
+  component={WeatherScreen}
+  options={{
+    tabBarLabel: "Clima",
+    tabBarIcon: ({ color, size }) => (
+      <Ionicons name="partly-sunny-outline" size={size} color={color} />
+    ),
+    headerTitle: "Clima para pesca",
+  }}
+/>
+
       <Tab.Screen name="Guías" component={GuidesScreen} />
       <Tab.Screen name="Perfil" component={ProfileScreen} />
     </Tab.Navigator>
